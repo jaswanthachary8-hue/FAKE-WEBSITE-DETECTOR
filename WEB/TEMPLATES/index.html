@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fake Web Detector - Phishing URL Checker</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 800px;
+            width: 100%;
+            padding: 40px;
+        }
+
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+
+        .input-group {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        button {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .result {
+            margin-top: 30px;
+            padding: 25px;
+            border-radius: 10px;
+            display: none;
+        }
+
+        .result.show {
+            display: block;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .result.legitimate {
+            background: #d4edda;
+            border: 2px solid #28a745;
+        }
+
+        .result.phishing {
+            background: #f8d7da;
+            border: 2px solid #dc3545;
+        }
+
+        .result-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .result-icon {
+            font-size: 2em;
+            margin-right: 15px;
+        }
+
+        .result-title {
+            font-size: 1.5em;
+            font-weight: 600;
+        }
+
+        .result.legitimate .result-title {
+            color: #155724;
+        }
+
+        .result.phishing .result-title {
+            color: #721c24;
+        }
+
+        .confidence-bar {
+            margin-top: 15px;
+            height: 30px;
+            background: #e9ecef;
+            border-radius: 15px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            transition: width 0.5s ease-out;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+        }
+
+        .result.legitimate .confidence-fill {
+            background: #28a745;
+        }
+
+        .result.phishing .confidence-fill {
+            background: #dc3545;
+        }
+
+        .probabilities {
+            margin-top: 20px;
+            display: flex;
+            gap: 15px;
+        }
+
+        .probability-item {
+            flex: 1;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .probability-label {
+            font-size: 0.9em;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .probability-value {
+            font-size: 1.5em;
+            font-weight: 600;
+        }
+
+        .error {
+            background: #f8d7da;
+            border: 2px solid #dc3545;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .error.show {
+            display: block;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            display: none;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .features {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        .features-title {
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .feature-item {
+            padding: 8px;
+            background: rgba(0, 0, 0, 0.05);
+            border-radius: 5px;
+            font-size: 0.9em;
+        }
+
+        .feature-name {
+            font-weight: 600;
+            color: #555;
+        }
+
+        .feature-value {
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🛡️ Fake Web Detector</h1>
+        <p class="subtitle">Check if a URL is legitimate or a phishing attempt</p>
+
+        <form id="urlForm">
+            <div class="input-group">
+                <label for="urlInput">Enter URL to check:</label>
+                <input 
+                    type="text" 
+                    id="urlInput" 
+                    placeholder="https://example.com" 
+                    required
+                >
+            </div>
+            <button type="submit" id="submitBtn">Check URL</button>
+        </form>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Analyzing URL...</p>
+        </div>
+
+        <div class="error" id="error"></div>
+
+        <div class="result" id="result">
+            <div class="result-header">
+                <div class="result-icon" id="resultIcon"></div>
+                <div class="result-title" id="resultTitle"></div>
+            </div>
+            <div class="confidence-bar">
+                <div class="confidence-fill" id="confidenceFill"></div>
+            </div>
+            <div class="probabilities">
+                <div class="probability-item">
+                    <div class="probability-label">Legitimate</div>
+                    <div class="probability-value" id="legitProb">0%</div>
+                </div>
+                <div class="probability-item">
+                    <div class="probability-label">Phishing</div>
+                    <div class="probability-value" id="phishProb">0%</div>
+                </div>
+            </div>
+            <div class="features" id="featuresSection" style="display: none;">
+                <div class="features-title">Extracted Features:</div>
+                <div class="features-grid" id="featuresGrid"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('urlForm');
+        const urlInput = document.getElementById('urlInput');
+        const submitBtn = document.getElementById('submitBtn');
+        const loading = document.getElementById('loading');
+        const error = document.getElementById('error');
+        const result = document.getElementById('result');
+        const resultIcon = document.getElementById('resultIcon');
+        const resultTitle = document.getElementById('resultTitle');
+        const confidenceFill = document.getElementById('confidenceFill');
+        const legitProb = document.getElementById('legitProb');
+        const phishProb = document.getElementById('phishProb');
+        const featuresSection = document.getElementById('featuresSection');
+        const featuresGrid = document.getElementById('featuresGrid');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const url = urlInput.value.trim();
+            if (!url) return;
+
+            // Reset UI
+            result.classList.remove('show', 'legitimate', 'phishing');
+            error.classList.remove('show');
+            loading.classList.add('show');
+            submitBtn.disabled = true;
+
+            try {
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ url: url })
+                });
+
+                const data = await response.json();
+
+                loading.classList.remove('show');
+                submitBtn.disabled = false;
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'An error occurred');
+                }
+
+                // Display result
+                const isPhishing = data.is_phishing;
+                result.classList.add('show', isPhishing ? 'phishing' : 'legitimate');
+                
+                resultIcon.textContent = isPhishing ? '⚠️' : '✅';
+                resultTitle.textContent = data.prediction;
+                
+                confidenceFill.style.width = data.confidence + '%';
+                confidenceFill.textContent = data.confidence + '%';
+                
+                legitProb.textContent = data.probabilities.legitimate + '%';
+                phishProb.textContent = data.probabilities.phishing + '%';
+
+                // Display features
+                if (data.features) {
+                    featuresGrid.innerHTML = '';
+                    for (const [key, value] of Object.entries(data.features)) {
+                        const featureItem = document.createElement('div');
+                        featureItem.className = 'feature-item';
+                        featureItem.innerHTML = `
+                            <div class="feature-name">${key.replace(/_/g, ' ')}</div>
+                            <div class="feature-value">${value}</div>
+                        `;
+                        featuresGrid.appendChild(featureItem);
+                    }
+                    featuresSection.style.display = 'block';
+                }
+
+            } catch (err) {
+                loading.classList.remove('show');
+                submitBtn.disabled = false;
+                error.textContent = err.message;
+                error.classList.add('show');
+            }
+        });
+    </script>
+</body>
+</html>
